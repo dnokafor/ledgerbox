@@ -1,0 +1,13 @@
+{
+  "name": "ledgerbox",
+  "version": "0.1.0",
+  "description": "Self-hosted family finance tracker",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": ["finance", "budget", "family", "self-hosted"],
+  "author": "Daniel Okafor",
+  "license": "MIT"
+}
