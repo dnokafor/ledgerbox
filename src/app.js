@@ -9,10 +9,11 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// routes
+// api routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/accounts', require('./routes/accounts'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/transactions', require('./routes/transactions'));
 
 // health check
 app.get('/health', (req, res) => {
