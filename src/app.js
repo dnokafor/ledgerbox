@@ -16,6 +16,11 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+// page routes
+app.get('/login', (req, res) => res.render('login'));
+app.get('/dashboard', (req, res) => res.render('dashboard'));
+app.get('/', (req, res) => res.redirect('/dashboard'));
+
 // health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

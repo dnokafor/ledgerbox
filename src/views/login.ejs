@@ -1,0 +1,39 @@
+<%- include('layout', { title: 'Login', body: ` %>
+<div class="card" style="max-width: 400px; margin: 3rem auto;">
+  <h2>Sign In</h2>
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" style="width:100%" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" style="width:100%" required>
+    </div>
+    <button type="submit" class="btn" style="width:100%">Log In</button>
+    <p id="error" style="color:#d63031;margin-top:0.5rem;display:none"></p>
+  </form>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error);
+    localStorage.setItem('token', data.token);
+    window.location.href = '/dashboard';
+  } catch (err) {
+    const el = document.getElementById('error');
+    el.textContent = err.message;
+    el.style.display = 'block';
+  }
+});
+</script>
+<% ` }) %>

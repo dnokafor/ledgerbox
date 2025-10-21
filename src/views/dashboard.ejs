@@ -1,0 +1,75 @@
+<%- include('layout', { title: 'Dashboard', body: ` %>
+<div class="grid" style="margin-bottom: 1.5rem;">
+  <div class="card">
+    <h2>Total Balance</h2>
+    <div class="amount" id="totalBalance">--</div>
+  </div>
+  <div class="card">
+    <h2>Monthly Income</h2>
+    <div class="amount positive" id="monthIncome">--</div>
+  </div>
+  <div class="card">
+    <h2>Monthly Expenses</h2>
+    <div class="amount negative" id="monthExpenses">--</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Accounts</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Balance</th></tr></thead>
+    <tbody id="accountsTable"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Recent Transactions</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
+    <tbody id="txTable"></tbody>
+  </table>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+function fmt(n) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+}
+
+async function loadDashboard() {
+  try {
+    const resp = await fetch('/api/dashboard', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    if (resp.status === 401 || resp.status === 403) {
+      window.location.href = '/login';
+      return;
+    }
+    const data = await resp.json();
+
+    document.getElementById('totalBalance').textContent = fmt(data.totalBalance);
+    document.getElementById('monthIncome').textContent = fmt(data.monthly.income);
+    document.getElementById('monthExpenses').textContent = fmt(data.monthly.expenses);
+
+    const acctTbody = document.getElementById('accountsTable');
+    acctTbody.innerHTML = data.accounts.map(a =>
+      '<tr><td>' + a.name + '</td><td>' + a.type + '</td><td>' + fmt(a.balance) + '</td></tr>'
+    ).join('');
+
+    const txTbody = document.getElementById('txTable');
+    txTbody.innerHTML = data.recentTransactions.map(tx =>
+      '<tr><td>' + tx.date + '</td><td>' + (tx.description || '-') + '</td><td>' +
+      (tx.Category ? tx.Category.name : '-') + '</td><td class="' +
+      (tx.type === 'income' ? 'positive' : 'negative') + '">' +
+      (tx.type === 'expense' ? '-' : '+') + fmt(tx.amount) + '</td></tr>'
+    ).join('');
+  } catch (err) {
+    console.error('Dashboard load failed:', err);
+  }
+}
+
+loadDashboard();
+</script>
+<% ` }) %>
