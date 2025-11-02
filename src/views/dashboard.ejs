@@ -1,75 +1,107 @@
-<%- include('layout', { title: 'Dashboard', body: ` %>
-<div class="grid" style="margin-bottom: 1.5rem;">
-  <div class="card">
-    <h2>Total Balance</h2>
-    <div class="amount" id="totalBalance">--</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LedgerBox - Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; color: #2d3436; }
+    .navbar { background: #2d3436; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .navbar h1 { font-size: 1.3rem; }
+    .navbar a { color: #dfe6e9; text-decoration: none; margin-left: 1.5rem; }
+    .navbar .logout { cursor: pointer; }
+    .container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: #fff; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card h2 { margin-bottom: 0.75rem; font-size: 1.1rem; color: #636e72; }
+    .amount { font-size: 1.8rem; font-weight: 700; }
+    .positive { color: #00b894; }
+    .negative { color: #d63031; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.6rem; text-align: left; border-bottom: 1px solid #eee; }
+    th { color: #636e72; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>LedgerBox</h1>
+    <div>
+      <a href="/dashboard">Dashboard</a>
+      <a href="#" class="logout" onclick="localStorage.removeItem('token');window.location='/login'">Logout</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h2>Total Balance</h2>
+        <div class="amount" id="totalBalance">--</div>
+      </div>
+      <div class="card">
+        <h2>Monthly Income</h2>
+        <div class="amount positive" id="monthIncome">--</div>
+      </div>
+      <div class="card">
+        <h2>Monthly Expenses</h2>
+        <div class="amount negative" id="monthExpenses">--</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Accounts</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Balance</th></tr></thead>
+        <tbody id="accountsTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Recent Transactions</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
+        <tbody id="txTable"></tbody>
+      </table>
+    </div>
   </div>
-  <div class="card">
-    <h2>Monthly Income</h2>
-    <div class="amount positive" id="monthIncome">--</div>
-  </div>
-  <div class="card">
-    <h2>Monthly Expenses</h2>
-    <div class="amount negative" id="monthExpenses">--</div>
-  </div>
-</div>
+  <script>
+  const token = localStorage.getItem('token');
+  if (!token) window.location.href = '/login';
 
-<div class="card">
-  <h2>Accounts</h2>
-  <table>
-    <thead><tr><th>Name</th><th>Type</th><th>Balance</th></tr></thead>
-    <tbody id="accountsTable"></tbody>
-  </table>
-</div>
-
-<div class="card">
-  <h2>Recent Transactions</h2>
-  <table>
-    <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
-    <tbody id="txTable"></tbody>
-  </table>
-</div>
-
-<script>
-const token = localStorage.getItem('token');
-if (!token) window.location.href = '/login';
-
-function fmt(n) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
-}
-
-async function loadDashboard() {
-  try {
-    const resp = await fetch('/api/dashboard', {
-      headers: { 'Authorization': 'Bearer ' + token },
-    });
-    if (resp.status === 401 || resp.status === 403) {
-      window.location.href = '/login';
-      return;
-    }
-    const data = await resp.json();
-
-    document.getElementById('totalBalance').textContent = fmt(data.totalBalance);
-    document.getElementById('monthIncome').textContent = fmt(data.monthly.income);
-    document.getElementById('monthExpenses').textContent = fmt(data.monthly.expenses);
-
-    const acctTbody = document.getElementById('accountsTable');
-    acctTbody.innerHTML = data.accounts.map(a =>
-      '<tr><td>' + a.name + '</td><td>' + a.type + '</td><td>' + fmt(a.balance) + '</td></tr>'
-    ).join('');
-
-    const txTbody = document.getElementById('txTable');
-    txTbody.innerHTML = data.recentTransactions.map(tx =>
-      '<tr><td>' + tx.date + '</td><td>' + (tx.description || '-') + '</td><td>' +
-      (tx.Category ? tx.Category.name : '-') + '</td><td class="' +
-      (tx.type === 'income' ? 'positive' : 'negative') + '">' +
-      (tx.type === 'expense' ? '-' : '+') + fmt(tx.amount) + '</td></tr>'
-    ).join('');
-  } catch (err) {
-    console.error('Dashboard load failed:', err);
+  function fmt(n) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
   }
-}
 
-loadDashboard();
-</script>
-<% ` }) %>
+  async function loadDashboard() {
+    try {
+      const resp = await fetch('/api/dashboard', {
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+      if (resp.status === 401 || resp.status === 403) {
+        window.location.href = '/login';
+        return;
+      }
+      const data = await resp.json();
+
+      document.getElementById('totalBalance').textContent = fmt(data.totalBalance);
+      document.getElementById('monthIncome').textContent = fmt(data.monthly.income);
+      document.getElementById('monthExpenses').textContent = fmt(data.monthly.expenses);
+
+      const acctTbody = document.getElementById('accountsTable');
+      acctTbody.innerHTML = data.accounts.map(function(a) {
+        return '<tr><td>' + a.name + '</td><td>' + a.type + '</td><td>' + fmt(a.balance) + '</td></tr>';
+      }).join('');
+
+      const txTbody = document.getElementById('txTable');
+      txTbody.innerHTML = data.recentTransactions.map(function(tx) {
+        return '<tr><td>' + tx.date + '</td><td>' + (tx.description || '-') + '</td><td>' +
+          (tx.Category ? tx.Category.name : '-') + '</td><td class="' +
+          (tx.type === 'income' ? 'positive' : 'negative') + '">' +
+          (tx.type === 'expense' ? '-' : '+') + fmt(tx.amount) + '</td></tr>';
+      }).join('');
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+    }
+  }
+
+  loadDashboard();
+  </script>
+</body>
+</html>
