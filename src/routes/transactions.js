@@ -12,11 +12,12 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
   try {
     const where = { userId: req.user.id };
-    const { accountId, categoryId, type, startDate, endDate } = req.query;
+    const { accountId, categoryId, type, startDate, endDate, recurring } = req.query;
 
     if (accountId) where.accountId = accountId;
     if (categoryId) where.categoryId = categoryId;
     if (type) where.type = type;
+    if (recurring === 'true') where.isRecurring = true;
 
     if (startDate || endDate) {
       where.date = {};
@@ -54,7 +55,8 @@ router.get('/', async (req, res) => {
 // POST /api/transactions
 router.post('/', async (req, res) => {
   try {
-    const { amount, type, description, date, accountId, categoryId } = req.body;
+    const { amount, type, description, date, accountId, categoryId,
+            isRecurring, recurringInterval, recurringEndDate } = req.body;
 
     if (!amount || !type || !date || !accountId) {
       return res.status(400).json({ error: 'Missing required fields (amount, type, date, accountId)' });
@@ -72,6 +74,9 @@ router.post('/', async (req, res) => {
       accountId,
       categoryId: categoryId || null,
       userId: req.user.id,
+      isRecurring: isRecurring || false,
+      recurringInterval: recurringInterval || null,
+      recurringEndDate: recurringEndDate || null,
     });
 
     // update account balance
@@ -114,12 +119,11 @@ router.put('/:id', async (req, res) => {
     });
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
-    const { amount, type, description, date, categoryId } = req.body;
-    if (amount !== undefined) tx.amount = amount;
-    if (type) tx.type = type;
-    if (description !== undefined) tx.description = description;
-    if (date) tx.date = date;
-    if (categoryId !== undefined) tx.categoryId = categoryId;
+    const fields = ['amount', 'type', 'description', 'date', 'categoryId',
+                    'isRecurring', 'recurringInterval', 'recurringEndDate'];
+    for (const f of fields) {
+      if (req.body[f] !== undefined) tx[f] = req.body[f];
+    }
     await tx.save();
 
     res.json(tx);
