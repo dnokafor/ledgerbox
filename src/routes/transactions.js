@@ -52,6 +52,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+function updateBalance(account, amount, type, reverse) {
+  const val = parseFloat(amount);
+  const bal = parseFloat(account.balance);
+  if (type === 'income') {
+    account.balance = reverse ? bal - val : bal + val;
+  } else if (type === 'expense') {
+    account.balance = reverse ? bal + val : bal - val;
+  }
+  // transfers don't affect balance here - handled separately
+}
+
 // POST /api/transactions
 router.post('/', async (req, res) => {
   try {
@@ -62,7 +73,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields (amount, type, date, accountId)' });
     }
 
-    // verify the account belongs to user
     const acct = await Account.findOne({ where: { id: accountId, userId: req.user.id } });
     if (!acct) return res.status(404).json({ error: 'Account not found' });
 
@@ -79,12 +89,7 @@ router.post('/', async (req, res) => {
       recurringEndDate: recurringEndDate || null,
     });
 
-    // update account balance
-    if (type === 'income') {
-      acct.balance = parseFloat(acct.balance) + parseFloat(amount);
-    } else if (type === 'expense') {
-      acct.balance = parseFloat(acct.balance) - parseFloat(amount);
-    }
+    updateBalance(acct, amount, type, false);
     await acct.save();
 
     res.status(201).json(tx);
@@ -140,14 +145,9 @@ router.delete('/:id', async (req, res) => {
     });
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
 
-    // reverse the balance change
     const acct = await Account.findByPk(tx.accountId);
     if (acct) {
-      if (tx.type === 'income') {
-        acct.balance = parseFloat(acct.balance) - parseFloat(tx.amount);
-      } else if (tx.type === 'expense') {
-        acct.balance = parseFloat(acct.balance) + parseFloat(tx.amount);
-      }
+      updateBalance(acct, tx.amount, tx.type, true);
       await acct.save();
     }
 
