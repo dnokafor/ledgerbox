@@ -4,17 +4,31 @@ const Account = require('../models/Account');
 const Transaction = require('../models/Transaction');
 const Category = require('../models/Category');
 const { Op } = require('sequelize');
-const sequelize = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 
 router.use(authenticateToken);
+
+function getMonthRange(dateStr) {
+  // accepts optional ?month=2026-01 query param
+  let year, month;
+  if (dateStr && /^\d{4}-\d{2}$/.test(dateStr)) {
+    [year, month] = dateStr.split('-').map(Number);
+  } else {
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+  const start = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { start, end };
+}
 
 // GET /api/dashboard
 router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // get all accounts with balances
     const accounts = await Account.findAll({
       where: { userId },
       attributes: ['id', 'name', 'type', 'balance', 'currency'],
@@ -22,14 +36,8 @@ router.get('/', async (req, res) => {
 
     const totalBalance = accounts.reduce((sum, a) => sum + parseFloat(a.balance), 0);
 
-    // current month boundaries
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString().split('T')[0];
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString().split('T')[0];
+    const { start: monthStart, end: monthEnd } = getMonthRange(req.query.month);
 
-    // monthly income & expenses
     const monthlyTxns = await Transaction.findAll({
       where: {
         userId,
@@ -44,7 +52,6 @@ router.get('/', async (req, res) => {
       else if (tx.type === 'expense') monthExpenses += parseFloat(tx.amount);
     }
 
-    // recent transactions
     const recent = await Transaction.findAll({
       where: { userId },
       include: [
