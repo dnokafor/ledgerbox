@@ -101,3 +101,10 @@ Uses SQLite in-memory for testing.
 ## License
 
 MIT
+
+## Node Version
+
+This project uses Node 18+. If you use nvm:
+```bash
+nvm use
+```
